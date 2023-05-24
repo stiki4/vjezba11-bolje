@@ -1,0 +1,260 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
+using Prijava;
+namespace UnitTestProject1
+{
+    [TestClass]
+    public class UnitTest1
+    {
+        [TestMethod]
+        public void Test1()
+        {
+            Autentifikator autentifikator = new Autentifikator();
+            var korisnik =autentifikator.DohvatiKorisnika("pperic");
+            Assert.IsNull(korisnik);
+        }
+        [TestMethod]
+        public void Test2()
+        {
+            Autentifikator autentifikator = new Autentifikator();
+            var korisnik = autentifikator.DohvatiKorisnika("thorvat");
+            Assert.IsNull(korisnik);
+        }
+       
+        [TestMethod]
+        public void Test4()
+        {
+            Autentifikator autentifikator = new Autentifikator();
+
+            Assert.ThrowsException<IncorrectAuthenticationData>(() => { autentifikator.RegistrirajKorisnika("gdg", "abc"); });
+        }
+        [TestMethod]
+        public void Test5()
+        {
+            Autentifikator autentifikator = new Autentifikator();
+            autentifikator.RegistrirajKorisnika("pperic","123456");
+            var k = autentifikator.DohvatiKorisnika("pperic");
+            Assert.IsTrue(k.KorisnickoIme=="pperic");
+            Assert.IsTrue(k.Lozinka == "123456");
+            Assert.IsTrue(k.Tip == TipKorisnika.Obicni);
+        }
+        [TestMethod]
+        public void Test6()
+        {
+            Autentifikator autentifikator = new Autentifikator();
+
+            Assert.ThrowsException<IncorrectAuthenticationData>(() => { autentifikator.RegistrirajKorisnika("btomas", "abc123"); });
+        }
+        [TestMethod]
+        public void Test7()
+        {
+            Autentifikator autentifikator = new Autentifikator();
+            autentifikator.PrijaviKorisnika("pivic", "12345");
+            Assert.ThrowsException<UnauthorizedRegistrationException>(() => { autentifikator.RegistrirajKorisnika("pperic", "123456",TipKorisnika.Administrator); });
+        }
+        [TestMethod]
+        public void Test8()
+        {
+            Autentifikator autentifikator = new Autentifikator();
+            autentifikator.PrijaviKorisnika("mmijac", "abcde");
+            autentifikator.RegistrirajKorisnika("pperic", "123456",TipKorisnika.Administrator);
+            var k = autentifikator.DohvatiKorisnika("pperic");
+            Assert.IsNotNull(k);
+            Assert.IsTrue(k.Tip == TipKorisnika.Administrator);
+        }
+        [TestMethod]
+        public void Test9()
+        {
+            Autentifikator autentifikator = new Autentifikator();
+            
+            autentifikator.RegistrirajKorisnika("pperic", "123456", TipKorisnika.Gost);
+            var k = autentifikator.DohvatiKorisnika("pperic");
+            Assert.IsNull(k);
+            
+        }
+        [TestMethod]
+        public void Test10()
+        {
+            Autentifikator autentifikator = new Autentifikator();
+
+            autentifikator.RegistrirajKorisnika("thorvat", "hfdrz");
+            var k = autentifikator.DohvatiKorisnika("thorvat");
+            Assert.IsNotNull(k);
+            Assert.IsTrue(k.Aktivan);
+
+        }
+    }
+}
+
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Prijava
+{
+    public class FailedAuthenticationException : ApplicationException
+    {
+        public FailedAuthenticationException(string message)
+            :base(message)
+        {
+
+        }
+    }
+
+    public class IncorrectAuthenticationData : ApplicationException
+    {
+        public IncorrectAuthenticationData() : base()
+        {
+
+        }
+    }
+
+    public class UnauthorizedRegistrationException : ApplicationException
+    {
+        public UnauthorizedRegistrationException() : base()
+        {
+
+        }
+    }
+
+    public class Autentifikator
+    {
+        private List<Korisnik> Korisnici { get; set; }
+        public Korisnik PrijavljeniKorisnik { get; private set; }
+
+        public Autentifikator()
+        {
+            Korisnici = new List<Korisnik>();
+
+            Korisnici.Add(new Korisnik { KorisnickoIme = "mmijac", Lozinka="abcde", Tip = TipKorisnika.Administrator });
+            Korisnici.Add(new Korisnik { KorisnickoIme = "pivic", Lozinka = "12345", Tip = TipKorisnika.Obicni });
+            Korisnici.Add(new Korisnik { KorisnickoIme = "valic", Lozinka = "ab234", Tip = TipKorisnika.Obicni });
+            Korisnici.Add(new Korisnik { KorisnickoIme = "anovak", Lozinka = "qetzs", Tip = TipKorisnika.Obicni });
+            Korisnici.Add(new Korisnik { KorisnickoIme = "thorvat", Lozinka = "hfdrz", Tip = TipKorisnika.Obicni, Aktivan = false });
+            Korisnici.Add(new Korisnik { KorisnickoIme = "gtudor", Lozinka = "nrtgs", Tip = TipKorisnika.Obicni });
+            Korisnici.Add(new Korisnik { KorisnickoIme = "btomas", Lozinka = "kgdrt", Tip = TipKorisnika.Administrator });
+            Korisnici.Add(new Korisnik { KorisnickoIme = "gost", Lozinka = "gost", Tip = TipKorisnika.Gost });
+        }
+
+        public void PrijaviKorisnika(string korisnickoIme, string lozinka)
+        {
+            if (korisnickoIme != "" && lozinka != "")
+            {
+                PrijavljeniKorisnik = Korisnici.FirstOrDefault(k => k.KorisnickoIme == korisnickoIme && k.Lozinka == lozinka);
+            }
+        }
+
+        public void PrijaviKorisnika()
+        {
+            PrijaviKorisnika("gost", "gost");
+        }
+
+        public void OdjaviKorisnika()
+        {
+            if (PrijavljeniKorisnik != null)
+            {
+                PrijavljeniKorisnik = null;
+            }
+            else
+            {
+                throw new InvalidOperationException("Odjava je moguća samo ukoliko je korisnik prijavljen!");
+            }
+            
+        }
+
+        public void RegistrirajKorisnika(string korisnickoIme, string lozinka)
+        {
+            if (lozinka.Count() < 5)
+            {
+                throw new IncorrectAuthenticationData();
+            }
+            RegistrirajKorisnika(korisnickoIme, lozinka, TipKorisnika.Obicni);
+            
+        }
+
+        public void RegistrirajKorisnika(string korisnickoIme, string lozinka, TipKorisnika tip)
+        {
+            if (Korisnici.Exists(x => x.KorisnickoIme == korisnickoIme && x.Aktivan == true))
+            {
+                throw new IncorrectAuthenticationData();
+            }
+
+            if (Korisnici.Exists(x => x.KorisnickoIme == korisnickoIme && x.Aktivan == false))
+            {
+                var neaktivanKorisnik = Korisnici.First(x => x.KorisnickoIme == korisnickoIme);
+                neaktivanKorisnik.Aktivan = true;
+                return;
+            }
+
+            if (korisnickoIme.Length < 5)
+            {
+                throw new IncorrectAuthenticationData();
+            }
+
+            if (tip == TipKorisnika.Gost)
+            {
+                return;
+            }
+
+            if (tip == TipKorisnika.Administrator && (PrijavljeniKorisnik == null || PrijavljeniKorisnik.Tip != TipKorisnika.Administrator))
+            {
+                throw new UnauthorizedRegistrationException();
+            }
+
+            Korisnik korisnik = new Korisnik
+            {
+                KorisnickoIme = korisnickoIme,
+                Lozinka = lozinka,
+                Tip = tip
+            };
+
+            Korisnici.Add(korisnik);
+        }
+
+        public Korisnik DohvatiKorisnika(string korisnickoIme)
+        {
+            
+            var korisnik = Korisnici.FirstOrDefault(k => k.KorisnickoIme == korisnickoIme);
+            
+            if(korisnik == null)
+            {
+                return null;
+            }
+            if (!korisnik.Aktivan)
+            {
+                return null;
+            }
+            return korisnik;
+        }
+    }
+}
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Prijava
+{
+    public enum TipKorisnika
+    {
+        Obicni,
+        Gost,
+        Administrator
+    }
+
+    public class Korisnik
+    {
+        public string KorisnickoIme { get; set; }
+        public string Lozinka { get; set; }
+
+        public TipKorisnika Tip { get; set; }
+        public bool Aktivan { get; set; } = true;
+
+    }
+}
