@@ -1,0 +1,72 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
+using IspitniRokovi;
+
+namespace _04_Ispitni_rokovi
+{
+    [TestClass]
+    public class UnitTest1
+    {
+        [TestMethod]
+        public void Test1()
+        {
+            var referada = new Referada();
+
+            Assert.IsNull(referada.DohvatiStudenta("123"));
+
+        }
+
+        [TestMethod]
+        public void Test2()
+        {
+            var referada = new Referada();
+
+            Assert.IsNotNull(referada.DohvatiStudenta("13"));
+
+        }
+        [TestMethod]
+        public void Test3()
+        {
+            var referada = new Referada();
+            var dohvaceniStudent = referada.DohvatiStudenta("11");
+
+            Assert.ThrowsException<ArgumentException>(() => { dohvaceniStudent.Upisi(0); });
+
+        }
+        [TestMethod]
+        public void Test4()
+        {
+            var referada = new Referada();
+           
+            var dohvaceniStudent = referada.DohvatiStudenta("11");
+            Assert.ThrowsException<ArgumentException>(() => { dohvaceniStudent.Upisi(3); });
+
+        }
+        [TestMethod]
+        public void Test5()
+        {
+            var referada = new Referada();
+           
+            var dohvaceniStudent = referada.DohvatiStudenta("12");
+            Assert.ThrowsException<ConditionsNotMetException>(() => { dohvaceniStudent.Upisi(3); });
+
+        }
+        [TestMethod]
+        public void Test6()
+        {
+            var referada = new Referada();
+            
+            var dohvaceniStudent = referada.DohvatiStudenta("11");
+            var rezultat = dohvaceniStudent.Upisi(2);
+            dohvaceniStudent = referada.DohvatiStudenta("11");
+
+            Assert.IsTrue(rezultat);
+            Assert.IsFalse(dohvaceniStudent.UvjetiZaUpis);
+            Assert.AreEqual(2, dohvaceniStudent.StudijskaGodina);
+
+
+        }
+
+
+    }
+}
