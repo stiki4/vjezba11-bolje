@@ -1,0 +1,211 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
+using Materijali;
+using System.Linq;
+
+namespace UnitTestProject
+{
+    [TestClass]
+    public class UnitTest1
+    {
+        [TestMethod]
+        public void Test1()
+        {
+            Zgrada z = new Zgrada();
+            z.Slojevi.Add(new Sloj(1, 40, z.Dijelovi.FirstOrDefault(p => p.Id == 1), z.Materijali.FirstOrDefault(p => p.Id == 3)));
+            z.Slojevi.Add(new Sloj(2, 0.5f, z.Dijelovi.FirstOrDefault(p => p.Id == 1), z.Materijali.FirstOrDefault(p => p.Id == 1)));
+            
+           
+           
+            Assert.ThrowsException<ArgumentException>(() =>
+            {
+                z.Slojevi.Add(new Sloj(3, -0f, z.Dijelovi.FirstOrDefault(p => p.Id == 1), z.Materijali.FirstOrDefault(p => p.Id == 5)));
+            });
+            Assert.ThrowsException<ArgumentException>(() =>
+            {
+                z.Slojevi.Add(new Sloj(4, -0.5f, z.Dijelovi.FirstOrDefault(p => p.Id == 3), z.Materijali.FirstOrDefault(p => p.Id == 2)));
+            });
+            Assert.ThrowsException<ArgumentException>(() =>
+            {
+                z.Slojevi.Add(new Sloj(5, -40, z.Dijelovi.FirstOrDefault(p => p.Id == 3), z.Materijali.FirstOrDefault(p => p.Id == 4)));
+            });
+
+            var prviSloj = z.Slojevi.FirstOrDefault(p => p.Id == 1);
+            var drugiSloj = z.Slojevi.FirstOrDefault(p => p.Id == 2);
+            Assert.IsNotNull(prviSloj);
+            Assert.IsNotNull(drugiSloj);
+            Assert.IsTrue(prviSloj.Debljina > 0);
+            Assert.IsTrue(drugiSloj.Debljina > 0);
+        }
+        [TestMethod]
+        public void Test2()
+        {
+            Zgrada z = new Zgrada();
+            z.DodajSloj(new Sloj(1, 40, z.Dijelovi.FirstOrDefault(p => p.Id == 1), z.Materijali.FirstOrDefault(p => p.Id == 3)));
+            z.DodajSloj(new Sloj(2, 0.5f, z.Dijelovi.FirstOrDefault(p => p.Id == 1), z.Materijali.FirstOrDefault(p => p.Id == 1)));
+
+            var dio1 = z.Dijelovi.FirstOrDefault(p => p.Id == 1);
+            var dio2 = z.Dijelovi.FirstOrDefault(p => p.Id == 2);
+            var dio3 = z.Dijelovi.FirstOrDefault(p => p.Id == 3);
+
+          
+            Assert.AreEqual(32.25, dio1.Otpor);
+            Assert.AreEqual(0.00, dio2.Otpor);
+            Assert.AreEqual(0.00, dio3.Otpor);
+
+        }
+
+    }
+}
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Materijali
+{
+    public class Zgrada
+    {
+        public List<Sloj> Slojevi { get; set; }
+
+        public List<Dio> Dijelovi { get; set; }
+        public List<Materijal> Materijali { get; set; }
+        public void DodajSloj(Sloj sloj)
+        {
+            if(sloj == null)
+            {
+                throw new ArgumentException();
+            }
+            var dio = sloj.GradjevniDio;
+            dio.Slojevi.Add(sloj);
+        }
+
+        public Zgrada()
+        {
+            Materijali = new List<Materijal>();
+            Dijelovi = new List<Dio>();
+            Slojevi = new List<Sloj>();
+            
+
+            Materijali.Add(new Materijal(1, "Beton", 1000, 0.5f));
+            Materijali.Add(new Materijal(2, "Drvo", 100, 10f));
+            Materijali.Add(new Materijal(3, "Estrih", 500, 0.8f));
+            Materijali.Add(new Materijal(4, "Šljunak", 800, 0.01f));
+            Materijali.Add(new Materijal(5, "Zrak", 0.1f, 0.00f));
+
+            Dijelovi.Add(new Dio(1, "Zid1"));
+            Dijelovi.Add(new Dio(2, "Zid2"));
+            Dijelovi.Add(new Dio(3, "Krov1"));
+
+            
+            
+        }
+    }
+}
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Materijali
+{
+    public class Sloj
+    {
+        private float _debljina;
+
+        public int Id { get; set; }
+        public Dio GradjevniDio { get; set; }
+        public Materijal MaterijalSloja { get; set; }
+        public float Debljina
+        {
+            get
+            {
+                return _debljina;
+            }
+            set
+            {
+               if(value <= -0f)
+                {
+                    throw new ArgumentException();
+                }
+                _debljina = value;
+            }
+        }
+
+        public Sloj(int id, float debljina, Dio gradjevniDio, Materijal materijal)
+        {
+            if (id >= 0 && debljina >= +0f && gradjevniDio != null && materijal != null )
+            {
+                Id = id;
+                Debljina = debljina;
+                GradjevniDio = gradjevniDio;
+                MaterijalSloja = materijal;
+            }else
+            {
+                throw new ArgumentException();
+            }
+           
+        }
+    }
+}
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Materijali
+{
+    public class Dio
+    {
+        public int Id { get; set; }
+        public string Naziv { get; set; }
+        public List<Sloj> Slojevi { get; set; }
+
+        public Dio(int id, string naziv)
+        {
+            this.Id = id;
+            this.Naziv = naziv;
+            Slojevi = new List<Sloj>();
+        }
+
+        public float Otpor
+        {
+            get
+            {
+                return Slojevi.Sum(p=>p.MaterijalSloja.Lambda*p.Debljina);
+            }
+        }
+    }
+}
+
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Materijali
+{
+    public class Materijal
+    {
+        public int Id { get; set; }
+        public string NazivMaterijala { get; set; }
+        public float Ro { get; set; }
+        public float Lambda { get; set; }
+
+        public Materijal(int id, string naziv, float ro, float lambda)
+        {
+            Id = id;
+            NazivMaterijala = naziv;
+            Ro = ro;
+            Lambda = lambda;
+        }
+    }
+}
