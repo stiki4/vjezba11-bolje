@@ -1,0 +1,275 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
+using MjenjacnicaLib;
+
+namespace UnitTestProject
+{
+    [TestClass]
+    public class UnitTest1
+    {
+        [TestMethod]
+        public void Test1()
+        {
+            var mjenjacnica = new Mjenjacnica();
+            var valuta1 = mjenjacnica.DohvatiValutu("HRK");
+            Assert.IsNotNull(valuta1);
+            Assert.AreEqual("HRK", valuta1.Naziv);
+        }
+
+        [TestMethod]
+        public void Test2()
+        {
+            var mjenjacnica = new Mjenjacnica();
+            var valuta1 = mjenjacnica.DohvatiValutu("hrk");
+            Assert.IsNotNull(valuta1);
+            Assert.AreEqual("HRK", valuta1.Naziv);
+        }
+        [TestMethod]
+        public void Test3()
+        {
+            var mjenjacnica = new Mjenjacnica();
+            var valuta1 = mjenjacnica.DohvatiValutu("CZK");
+            Assert.IsNull(valuta1);
+
+        }
+        [TestMethod]
+        public void Test4()
+        {
+            var mjenjacnica = new Mjenjacnica();
+            var izvorisna = mjenjacnica.DohvatiValutu("EUR");
+            var odredisna = mjenjacnica.DohvatiValutu("HRK");
+            var finalniIznos = mjenjacnica.PromijeniNovac(izvorisna, odredisna, 100);
+
+
+            Assert.AreEqual(760, finalniIznos);
+
+        }
+        [TestMethod]
+        public void Test5()
+        {
+            var mjenjacnica = new Mjenjacnica();
+            var izvorisna = mjenjacnica.DohvatiValutu("EUR");
+
+
+            Assert.ThrowsException<InvalidCurrencyException>(() => { var finalniIznos = mjenjacnica.PromijeniNovac(izvorisna, null, 100); });
+
+        }
+        [TestMethod]
+        public void Test6()
+        {
+            var mjenjacnica = new Mjenjacnica();
+            var izvorisna = mjenjacnica.DohvatiValutu("EUR");
+            var finalniIznos = mjenjacnica.PromijeniNovac(izvorisna, izvorisna, 100);
+
+            Assert.AreEqual(100, finalniIznos);
+
+        }
+
+        [TestMethod]
+        public void Test7()
+        {
+            var mjenjacnica = new Mjenjacnica();
+            var izvorisna = mjenjacnica.DohvatiValutu("EUR");
+            var odredisna = mjenjacnica.DohvatiValutu("HRK");
+
+
+            Assert.ThrowsException<InvalidAmountException>(() => { var finalniIznos = mjenjacnica.PromijeniNovac(izvorisna, odredisna, -100); });
+
+        }
+        [TestMethod]
+        public void Test8()
+        {
+            var valuta = new Valuta("CZK", "Češka");
+            Assert.AreEqual("CZK (Češka)", valuta.ToString());
+
+
+
+
+
+        }
+        [TestMethod]
+        public void Test9()
+        {
+            var mjenjacnica = new Mjenjacnica();
+
+
+
+            Assert.ThrowsException<CurrencyExistsException>(() =>
+            {
+               mjenjacnica.DodajNovuValutu("HRK", "Hrvatska");
+            });
+
+        }
+        [TestMethod]
+        public void Test10()
+        {
+            var mjenjacnica = new Mjenjacnica();
+
+
+            mjenjacnica.DodajNovuValutu("BB", "BrunoLand");
+
+            var dohvacenaValuta = mjenjacnica.DohvatiValutu("BB");
+            Assert.IsNotNull(dohvacenaValuta);
+
+
+
+        }
+    }
+}
+
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace MjenjacnicaLib
+{
+    public class Mjenjacnica
+    {
+        public Valuta ReferentnaValuta { get; set; }
+        public PopisTecajeva PopisTecajeva { get; set; }
+        public List<Valuta> Valute { get; private set; }
+
+        public Mjenjacnica()
+        {
+            Valute = new List<Valuta>();
+
+            Valute.Add(new Valuta("AUD", "Australija"));
+            Valute.Add(new Valuta("CAD", "Kanada"));
+            Valute.Add(new Valuta("CHF", "Švicarska"));
+            Valute.Add(new Valuta("GBP", "V. Britanija"));
+            Valute.Add(new Valuta("USD", "SAD"));
+            Valute.Add(new Valuta("BAM", "BiH"));
+            Valute.Add(new Valuta("EUR", "EMU"));
+            Valute.Add(new Valuta("HRK", "Hrvatska"));
+            
+            PopisTecajeva = new PopisTecajeva(this);
+            ReferentnaValuta = DohvatiValutu("HRK");
+        }
+
+        public void DodajNovuValutu(string naziv, string drzava)
+        {
+            /*if (Valute.Count(p => p.Naziv==naziv) > 0)
+            {
+
+            } */
+            foreach (var item in Valute)
+            {
+                if(item.Naziv == naziv)
+                {
+                    throw new CurrencyExistsException();
+                }
+            }
+            var valuta = new Valuta(naziv, drzava);
+            Valute.Add(valuta);
+        }
+
+        public Valuta DohvatiValutu(string nazivValute)
+        {
+            Valuta valuta = null;
+
+            foreach (var v in Valute)
+            {
+                if (v.Naziv.ToLower() == nazivValute.ToLower())
+                {
+                    valuta = v;
+                }
+            }
+
+            return valuta;
+        }
+
+        public double PromijeniNovac(Valuta izvorisna, Valuta odredisna, double iznos)
+        {
+            if(odredisna == null)
+            {
+                throw new InvalidCurrencyException();
+            }
+            if(iznos < 0)
+            {
+                throw new InvalidAmountException();
+            }
+            var tecajIzvorisneValute = PopisTecajeva.VratiTecajZaValutu(izvorisna);
+            var tecajOdredisneValute = PopisTecajeva.VratiTecajZaValutu(odredisna);
+
+            var omjerTecaja = tecajIzvorisneValute.Vrijednost / tecajOdredisneValute.Vrijednost;
+
+            return omjerTecaja * iznos;
+        }
+    }
+}
+
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace MjenjacnicaLib
+{
+    public class Valuta
+    {
+        public string Naziv { get; set; }
+        public string Drzava { get; set; }
+
+        public Valuta(string naziv, string drzava)
+        {
+            Naziv = naziv;
+            Drzava = drzava;
+        }
+        public override string ToString()
+        {
+            return $"{Naziv} ({Drzava})";
+        }
+    }
+}
+
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace MjenjacnicaLib
+{
+    public class InvalidAmountException :ApplicationException
+    {
+    }
+}
+
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace MjenjacnicaLib
+{
+    public class CurrencyExistsException : ApplicationException
+    {
+    }
+}
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace MjenjacnicaLib
+{
+    public class InvalidCurrencyException: ApplicationException
+    {
+
+    }
+}
