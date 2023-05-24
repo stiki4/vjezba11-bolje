@@ -1,0 +1,236 @@
+using Financije;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
+
+namespace UnitTestProject
+{
+    [TestClass]
+    public class UnitTest1
+    {
+        [TestMethod]
+        public void Test1()
+        {
+            var banka = new Banka();
+            var racun = banka.DohvatiRacun("HR12");
+
+            Assert.IsNull(racun);
+        }
+
+
+
+        [TestMethod]
+        public void Test2()
+        {
+            var banka = new Banka();
+            var racun = banka.DohvatiRacun("HR11");
+
+            Assert.AreEqual("HR11", racun.IBAN);
+        }
+
+        [TestMethod]
+        public void Test3()
+        {
+            var banka = new Banka();
+
+
+            Assert.ThrowsException<BankAccountBlockedException>(() =>
+            {
+                var racun = banka.DohvatiRacun("HR44");
+            });
+        }
+
+        [TestMethod]
+        public void Test4()
+        {
+            var banka = new Banka();
+
+
+            Assert.ThrowsException<TransactionFailedException>(() =>
+            {
+                var racun1 = banka.DohvatiRacun("HR11");
+                var racun2 = banka.DohvatiRacun("HR21");
+                racun1.Isplati(racun2, 30000);
+            });
+        }
+        [TestMethod]
+        public void Test5()
+        {
+            var banka = new Banka();
+            var racun1 = banka.DohvatiRacun("HR11");
+            var racun2 = banka.DohvatiRacun("HR22");
+            racun1.Isplati(racun2, 30000);
+
+            Assert.AreEqual(70000, racun1.Stanje);
+            Assert.AreEqual(80000, racun2.Stanje);
+        }
+        [TestMethod]
+        public void Test6()
+        {
+            var banka = new Banka();
+            var racun1 = banka.DohvatiRacun("HR11");
+            var racun2 = banka.DohvatiRacun("HR22");
+            var isplate = racun1.Isplati(racun2, 30000);
+
+            Assert.AreEqual("HR11", isplate.Platitelj);
+            Assert.AreEqual("HR22", isplate.Primatelj);
+            Assert.AreEqual(30000, isplate.Iznos);
+        }
+        [TestMethod]
+        public void Test7()
+        {
+            
+            var banka = new Banka();
+
+
+            Assert.ThrowsException<TransactionFailedException>(() =>
+            {
+                var racun1 = banka.DohvatiRacun("HR11");
+                var racun2 = banka.DohvatiRacun("HR22");
+                racun1.Isplati(racun2, 130000);
+            });
+        }
+        [TestMethod]
+        public void Test8()
+        {
+            var banka = new Banka();
+            var racun1 = banka.DohvatiRacun("HR66");
+            var racun2 = banka.DohvatiRacun("HR55");
+            racun1.Isplati(racun2, 3000);
+
+            Assert.AreEqual(-1000, racun1.Stanje);
+            Assert.AreEqual(11000, racun2.Stanje);
+        }
+
+        [TestMethod]
+        public void Test9()
+        {
+
+            var banka = new Banka();
+
+
+            Assert.ThrowsException<TransactionFailedException>(() =>
+            {
+                var racun1 = banka.DohvatiRacun("HR66");
+                var racun2 = banka.DohvatiRacun("HR55");
+                racun1.Isplati(racun2, 5500);
+            });
+        }
+        [TestMethod]
+        public void Test10()
+        {
+
+            var banka = new Banka();
+
+
+            Assert.ThrowsException<TransactionFailedException>(() =>
+            {
+                var racun1 = banka.DohvatiRacun("HR11");
+                var racun2 = banka.DohvatiRacun("HR22");
+                racun1.Isplati(racun2, -500);
+            });
+        }
+
+
+
+    }
+}
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Financije
+{
+    public class BankAccountBlockedException : ApplicationException
+    {
+        public BankAccountBlockedException()
+        {
+
+        }
+    }
+
+    public class Banka
+    {
+        private List<Racun> Racuni { get; set; }
+
+        public Banka()
+        {
+            Racuni = new List<Racun>();
+
+            Racuni.Add(new Racun { IBAN = "HR11", Stanje = 100000, Blokiran = false });
+            Racuni.Add(new Racun { IBAN = "HR22", Stanje = 50000, Blokiran = false });
+            Racuni.Add(new Racun { IBAN = "HR33", Stanje = 12000, Blokiran = false });
+            Racuni.Add(new Racun { IBAN = "HR44", Stanje = 36000, Blokiran = true });
+            Racuni.Add(new Racun { IBAN = "HR55", Stanje = 8000, Blokiran = false });
+            Racuni.Add(new Racun { IBAN = "HR66", Stanje = 2000, Blokiran = false, OdobreniMinus = 3000 });
+        }
+
+        public Racun DohvatiRacun(string iban)
+        {
+
+            var racun = Racuni.FirstOrDefault(r => r.IBAN == iban);
+            if (racun != null && racun.Blokiran)
+            {
+                throw new BankAccountBlockedException();
+            }
+            return racun;
+        }
+    }
+}
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Financije
+{
+    public class TransactionFailedException : ApplicationException
+    {
+
+    }
+
+    public class Racun
+    {
+        public string IBAN { get; set; }
+        public double Stanje { get; set; }
+        public bool Blokiran { get; set; }
+        public double OdobreniMinus { get; set; }
+
+        public Isplata Isplati(Racun primatelj, double iznos)
+        {
+            if(iznos < 0)
+            {
+                throw new TransactionFailedException();
+            }
+            Isplata isplata = null;
+
+            if (primatelj == null)
+            {
+                throw new TransactionFailedException();
+            }
+
+            if (iznos > (Stanje+ OdobreniMinus))
+            {
+                throw new TransactionFailedException();
+            }
+
+            primatelj.Stanje += iznos;
+            Stanje -= iznos;
+
+            isplata = new Isplata
+            {
+                Platitelj = IBAN,
+                Primatelj = primatelj.IBAN,
+                Iznos = iznos
+            };
+
+            return isplata;
+        }
+    }
+}
