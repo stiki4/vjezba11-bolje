@@ -1,0 +1,227 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
+using Banka;
+
+namespace UnitTestProject
+{
+    [TestClass]
+    public class UnitTest1
+    {
+        [TestMethod]
+        public void Test1()
+        {
+            UpraviteljTransakcijama upravitelj = new UpraviteljTransakcijama();
+            var transakcija = upravitelj.PrebaciSredstva("HR22", "HR33", 15000);
+            Assert.IsTrue(transakcija.Naplaceno == 15000);
+            Assert.IsTrue(transakcija.PreostaloNaplatiti == 0);
+        }
+        [TestMethod]
+        public void Test2()
+        {
+            UpraviteljTransakcijama upravitelj = new UpraviteljTransakcijama();
+            var transakcija = upravitelj.PrebaciSredstva("HR66", "HR55", 2500);
+            Assert.IsTrue(transakcija.Izvor.Stanje == 0);
+            Assert.IsTrue(transakcija.Odrediste.Stanje == 10000);
+        }
+        [TestMethod]
+        public void Test3()
+        {
+            UpraviteljTransakcijama upravitelj = new UpraviteljTransakcijama();
+            var transakcija = upravitelj.PrebaciSredstva("HR22", "HR33", 15000);
+            Assert.IsTrue(transakcija.Izvor.Stanje == 35000);
+            Assert.IsTrue(transakcija.Odrediste.Stanje == 27000);
+        }
+        [TestMethod]
+        public void Test4()
+        {
+            UpraviteljTransakcijama upravitelj = new UpraviteljTransakcijama();
+            
+            Assert.ThrowsException<InvalidBankAccountException>(() => { upravitelj.PrebaciSredstva("HR00", "HR33", 666); });
+          
+        }
+        [TestMethod]
+        public void Test5()
+        {
+            UpraviteljTransakcijama upravitelj = new UpraviteljTransakcijama();
+
+            Assert.ThrowsException<InvalidAmountException>(() => { upravitelj.PrebaciSredstva("HR22", "HR33", 0); });
+
+        }
+        [TestMethod]
+        public void Test6()
+        {
+            UpraviteljTransakcijama upravitelj = new UpraviteljTransakcijama();
+
+            var transakcija = upravitelj.PrebaciSredstva("HR55", "HR66", 10000);
+            Assert.IsTrue(transakcija.Naplaceno==8000);
+            Assert.IsTrue(transakcija.PreostaloNaplatiti==2000);
+
+        }
+        [TestMethod]
+        public void Test7()
+        {
+            UpraviteljTransakcijama upravitelj = new UpraviteljTransakcijama();
+
+            Assert.ThrowsException<InvalidBankAccountException>(() => { upravitelj.OdobriMinus("HR01", 500); });
+
+        }
+        [TestMethod]
+        public void Test8()
+        {
+            UpraviteljTransakcijama upravitelj = new UpraviteljTransakcijama();
+
+            Assert.ThrowsException<InvalidBankAccountException>(() => { upravitelj.PrebaciSredstva("HR66", "HR66",500); });
+
+        }
+        [TestMethod]
+        public void Test9()
+        {
+            UpraviteljTransakcijama upravitelj = new UpraviteljTransakcijama();
+            upravitelj.OdobriMinus("HR66", 2000);
+            var transakcija = upravitelj.PrebaciSredstva("HR66", "HR33", 4300);
+            
+            Assert.IsTrue(transakcija.Izvor.Stanje == -2000);
+            Assert.IsTrue(transakcija.Odrediste.Stanje == 16000);
+            Assert.IsTrue(transakcija.Naplaceno == 4000);
+            Assert.IsTrue(transakcija.PreostaloNaplatiti == 300);
+
+
+        }
+    }
+}
+
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Banka
+{
+    public class InvalidBankAccountException : ApplicationException
+    {
+        public InvalidBankAccountException()
+        {
+
+        }
+    }
+
+    public class InvalidAmountException : ApplicationException
+    {
+        public InvalidAmountException()
+        {
+
+        }
+    }
+
+    public class UpraviteljTransakcijama
+    {
+        private List<Racun> Racuni { get; set; }
+
+        public UpraviteljTransakcijama()
+        {
+            Racuni = new List<Racun>();
+            Racuni.Add(new Racun { IBAN = "HR11", Stanje = 100000 });
+            Racuni.Add(new Racun { IBAN = "HR22", Stanje = 50000 });
+            Racuni.Add(new Racun { IBAN = "HR33", Stanje = 12000 });
+            Racuni.Add(new Racun { IBAN = "HR44", Stanje = 36000 });
+            Racuni.Add(new Racun { IBAN = "HR55", Stanje = 8000 });
+            Racuni.Add(new Racun { IBAN = "HR66", Stanje = 2000 });
+        }
+
+        public Transakcija PrebaciSredstva(string izvorIBAN, string odredisteIBAN, double iznos)
+        {
+            Racun izvor = Racuni.FirstOrDefault(r => r.IBAN == izvorIBAN);
+            Racun odrediste = Racuni.FirstOrDefault(r => r.IBAN == odredisteIBAN);
+            
+
+            if (izvor == null || odrediste == null || izvor == odrediste)
+            {
+                throw new InvalidBankAccountException();
+            }
+
+            if (iznos <= 0)
+            {
+                throw new InvalidAmountException();
+            }
+
+            Transakcija t = new Transakcija();
+            t.Izvor = izvor;
+            t.Odrediste = odrediste;
+            t.Iznos = iznos;
+
+            if ((izvor.Stanje >= iznos || (izvor.Stanje+izvor.OdobreniMinus) >= iznos))
+            {
+                t.Naplaceno = iznos;
+            }else if (izvor.Stanje < iznos && (izvor.Stanje + izvor.OdobreniMinus) < iznos)
+            {
+                t.Naplaceno=izvor.Stanje + izvor.OdobreniMinus;
+            }
+            else
+            {
+                t.Naplaceno = izvor.Stanje;
+                
+            }
+            t.PreostaloNaplatiti = t.Iznos - t.Naplaceno;
+
+            izvor.Stanje = izvor.Stanje - t.Naplaceno;
+            odrediste.Stanje = odrediste.Stanje + t.Naplaceno;
+
+            return t;
+        }
+
+        public void OdobriMinus(string izvorIBAN, int odobreniMinus)
+        {
+            
+            Racun r = Racuni.FirstOrDefault(x => x.IBAN == izvorIBAN);
+            if (r != null)
+            {
+                r.OdobreniMinus = odobreniMinus;
+            }
+            else
+            {
+                throw new InvalidBankAccountException();
+            }
+        }
+    }
+}
+
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Banka
+{
+    public class Transakcija
+    {
+        public Racun Izvor { get; set; }
+        public Racun Odrediste { get; set; }
+        public double Iznos { get; set; }
+        public double Naplaceno { get; set; }
+        public double PreostaloNaplatiti { get; set; }
+    }
+}
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Banka
+{
+    public class Racun
+    {
+        public string IBAN { get; set; }
+        public double Stanje { get; set; }
+        public double OdobreniMinus { get; set; }
+      
+    }
+}
